@@ -184,11 +184,10 @@ class NeuralNet(object):
 	        # delta_prev: delta^(l+1), in the start of this loop, delta_prev is also delta^(L) or delta_last
 	        # delta_dot_w_prev: delta^(l+1) dot product with w^(l+1)T
 
-            delta_dot_w_prev = delta
-            if i < len(self.layers)-2:
-                delta_dot_w_prev = delta.dot(np.transpose(prev_layer.w))
+            delta_dot_w_prev = delta.dot(np.transpose(prev_layer.w))
 	        # Use delta_dot_w_prev to compute delta factor for the next layer (in backpropagation direction)
             grad_w, delta_prev = layer.backward(x, delta_dot_w_prev)
+            delta = delta_prev
             grad_list.append(grad_w.copy())
 
         grad_list = grad_list[::-1]
