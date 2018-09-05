@@ -45,17 +45,17 @@ class Layer(object):
         :param x: input
         """
         # [TODO 1.2]
-        result = None
+        result = x.dot(self.w)
         
         # Compute different types of activation
         if (self.activation == 'sigmoid'):
-            result = sigmoid(x)
+            result = sigmoid(result)
         elif (self.activation == 'relu'):
-            result = reLU(x)
+            result = reLU(result)
         elif (self.activation == 'tanh'):
-            result = tanh(x)
+            result = tanh(result)
         elif (self.activation == 'softmax'):
-            result = softmax(x)
+            result = softmax(result)
 
         self.output = result
         return result
@@ -69,25 +69,28 @@ class Layer(object):
         computed from the next layer (in feedforward direction) or previous layer (in backpropagation direction)
         """
         # [TODO 1.2]
-        # dZ2 = A2 - Y
-        # dW2 = (1.0/m) * np.matmul(dZ2, np.transpose(A1)) + (lambd/m)*W2 ## add the regularization term
-        # db2 = (1.0/m) * np.sum(dZ2, axis=1, keepdims=True)
+        m = x.shape[0] * 1.0
+        print(m)
+        # z (l) = a (l−1) w
+        z = x.dot(self.w)
+        # δ (l) = (δ (l+1) w (l+1)T ) σ'(z (l) )
+        # a (l−1)T δ (l)
+        print(x.shape, self.w.shape, delta_dot_w_prev.shape)
         
-        # dZ1 = np.matmul(np.transpose(W2), dZ2) * (1 - np.power(A1, 2))
-        # dW1 = (1.0/m) * np.matmul(dZ1, np.transpose(X)) + (lambd/m)*W1 ## add the regularization
-        # db1 = (1.0/m) * np.sum(dZ1, axis=1, keepdims=True)
-
         if(self.activation == 'sigmoid'):
-            w_grad = delta_dot_w_prev.dot(np.transpose(x))
+            delta = delta_dot_w_prev * (sigmoid_grad(z))
+            w_grad = np.mean(np.transpose(x).dot(delta))
         
         elif(self.activation == 'tanh'):
-           w_grad = delta_dot_w_prev.dot(np.transpose(x)) 
+            delta = delta_dot_w_prev * (tanh_grad(z))
+            w_grad = np.mean(np.transpose(x).dot(delta))
 
         elif(self.activation == 'relu'):
-           w_grad = delta_dot_w_prev.dot(np.transpose(x)) 
+            delta = delta_dot_w_prev * (reLU_grad(z))
+            w_grad = np.mean(np.transpose(x).dot(delta))
 
         # [TODO 1.4] Implement L2 regularization on weights here
-        w_grad +=  self.w
+        w_grad +=  self.reg/m * self.w
         return w_grad, delta.copy()
 
 
@@ -141,10 +144,14 @@ class NeuralNet(object):
 
         # [TODO 1.3]
         # Estimating cross entropy loss from y_hat and y 
-        data_loss = 0
+        data_loss = -np.mean(np.multiply(y,np.log(y_hat)), axis=1)
+        #(-1.0) * np.mean(np.multiply(y, np.log(y_hat)) + np.multiply(1.0-y, np.log(1.0 - y_hat)), axis=1)
 
         # Estimating regularization loss from all layers
-        reg_loss = 0.0
+        total = 0
+        for l in self.layers:
+            total += np.sum(l.w**2)
+        reg_loss = 0.5 * self.reg * total
         data_loss += reg_loss
 
         return data_loss
@@ -157,11 +164,14 @@ class NeuralNet(object):
         """
         
         # [TODO 1.5] Compute delta factor from the output
-        delta = 0
+        y_hat = all_x[-1]
+        delta = y_hat - y
+        print(delta.shape)
         delta /= y.shape[0]
         
-        # [TODO 1.5] Compute gradient of the loss function with respect to w of softmax layer, use delta from the output
-        grad_last = 0
+        # [TODO 1.5] Compute gradient of the loss function with respect to w of softmax layer, 
+        # use delta from the output
+        grad_last = delta
 
         grad_list = []
         grad_list.append(grad_last)
@@ -173,7 +183,10 @@ class NeuralNet(object):
 	        # [TODO 1.5] Compute delta_dot_w_prev factor for previous layer (in backpropagation direction)
 	        # delta_prev: delta^(l+1), in the start of this loop, delta_prev is also delta^(L) or delta_last
 	        # delta_dot_w_prev: delta^(l+1) dot product with w^(l+1)T
-            delta_dot_w_prev = delta.dot(w.transpose)
+
+            delta_dot_w_prev = delta
+            if i < len(self.layers)-2:
+                delta_dot_w_prev = delta.dot(np.transpose(prev_layer.w))
 	        # Use delta_dot_w_prev to compute delta factor for the next layer (in backpropagation direction)
             grad_w, delta_prev = layer.backward(x, delta_dot_w_prev)
             grad_list.append(grad_w.copy())
@@ -243,9 +256,11 @@ def unit_test_layer(your_layer):
     """
     # generate a random data point
     x_test = np.random.randn(1, your_layer.w.shape[0])
+
     layer_sigmoid = Layer(your_layer.w.shape, your_layer.activation, reg = 0.0)
 
-    #randomize the partial derivative of the cost function w.r.t the next layer    
+    #randomize the partial derivative of the cost function w.r.t the next layer 
+    #print(your_layer.w.shape)   
     delta_prev = np.ones((1,your_layer.w.shape[1]))
     
     # evaluate the numerical gradient of the layer
@@ -253,7 +268,9 @@ def unit_test_layer(your_layer):
 
     #evaluate the gradient using back propagation algorithm
     layer_sigmoid.forward(x_test)
+    print(x_test.shape, delta_prev.shape)
     w_grad, delta = layer_sigmoid.backward(x_test, delta_prev)
+    print(w_grad, delta)
 
     #print out the relative error
     error = rel_error(w_grad, numerical_grad)
@@ -270,7 +287,28 @@ def minibatch_train(net, train_x, train_y, cfg):
     :param cfg: Config object
     """
     # [TODO 1.6] Implement mini-batch training
-    pass
+    train_set_x = train_x[:cfg.num_train].copy()
+    train_set_y = train_y[:cfg.num_train].copy()
+    train_set_y = create_one_hot(train_set_y, net.num_class)
+    all_loss = []
+
+    for e in range(cfg.num_epoch):
+        all_x = net.forward(train_set_x)
+        y_hat = all_x[-1]
+        loss = net.compute_loss(train_set_y, y_hat)
+        grads = net.backward(train_set_y, all_x)
+        net.update_weight(grads, cfg.learning_rate)
+
+        all_loss.append(loss)
+
+        if (cfg.visualize and e % cfg.epochs_to_draw == cfg.epochs_to_draw-1):
+            y_hat = net.forward(train_x[0::3])[-1]
+            visualize_point(train_x[0::3], train_y[0::3], y_hat)
+            plot_loss(all_loss, 2)
+            plt.show()
+            plt.pause(0.01)
+
+        print("Epoch %d: loss is %.5f" % (e+1, loss))
     
 
 
@@ -340,10 +378,10 @@ def bat_classification():
     #batch_train(net, train_x, train_y, cfg)
 
     #Batch training - train all dataset
-    #batch_train(net, train_x, train_y, cfg)
+    batch_train(net, train_x, train_y, cfg)
 
     #Minibatch training - training dataset using Minibatch approach
-    minibatch_train(net, train_x, train_y, cfg)
+    #minibatch_train(net, train_x, train_y, cfg)
     
     y_hat = net.forward(test_x)[-1]
     test(y_hat, test_y)

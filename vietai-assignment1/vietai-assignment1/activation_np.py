@@ -24,8 +24,8 @@ def sigmoid_grad(a):
     :param a: output of the sigmoid function
     """
     #[TODO 1.1]
-    result = sigmoid(x) * (1.0 - sigmoid(x))
-    return None
+    result = sigmoid(a) * (1.0 - sigmoid(a))
+    return result
 
 
 def reLU(x):
@@ -35,7 +35,8 @@ def reLU(x):
     :param x: input
     """
     #[TODO 1.1]
-    result = np.max(0, x)
+    print(x.shape)
+    result = np.maximum(0, x)
     return result
 
 
@@ -71,7 +72,7 @@ def tanh_grad(a):
     :param a: output of tanh
     """
     #[TODO 1.1]
-    result = 1.0 - np.tanh(x)**2
+    result = 1.0 - np.tanh(a)**2
     return result
 
 
