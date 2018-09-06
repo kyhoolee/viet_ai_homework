@@ -13,7 +13,7 @@ import pdb
 
 
 class Config(object):
-    def __init__(self, num_epoch=1000, batch_size=100, learning_rate=0.0005, momentum_rate=0.9, epochs_to_draw=10, reg=0.00015, num_train=1000, visualize=True):
+    def __init__(self, num_epoch=1000, batch_size=100, learning_rate=0.001, momentum_rate=0.9, epochs_to_draw=10, reg=0.00015, num_train=1000, visualize=True):
         self.num_epoch = num_epoch
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -70,25 +70,40 @@ class Layer(object):
         """
         # [TODO 1.2]
         m = x.shape[0] * 1.0
-        print(m)
+        #print(m)
         # z (l) = a (l−1) w
         z = x.dot(self.w)
-        # δ (l) = (δ (l+1) w (l+1)T ) σ'(z (l) )
+
+        # δ (l) = (δ (l+1) w (l+1)T ) * σ'(z (l) )
         # a (l−1)T δ (l)
-        print(x.shape, self.w.shape, delta_dot_w_prev.shape)
+        # print(
+        #     'shape x', x.shape, 
+        #     'shape w', self.w.shape, 
+        #     'shape delta_dot_w_prev', delta_dot_w_prev.shape)
+        #print('shape z', z.shape)
         
         if(self.activation == 'sigmoid'):
-            delta = delta_dot_w_prev * (sigmoid_grad(z))
-            w_grad = np.mean(np.transpose(x).dot(delta))
+            a = sigmoid(z)
+            delta = delta_dot_w_prev * (sigmoid_grad(a))
+            w_grad = np.transpose(x).dot(delta)
+            #np.mean(np.transpose(x).dot(delta), axis=0)
+            #print('delta', delta.shape)
         
         elif(self.activation == 'tanh'):
-            delta = delta_dot_w_prev * (tanh_grad(z))
-            w_grad = np.mean(np.transpose(x).dot(delta))
+            a = tanh(z)
+            delta = delta_dot_w_prev * (tanh_grad(a))
+            w_grad = np.transpose(x).dot(delta)
+            #np.mean(np.transpose(x).dot(delta), axis=0)
+            #print('delta', delta.shape)
 
         elif(self.activation == 'relu'):
-            delta = delta_dot_w_prev * (reLU_grad(z))
-            w_grad = np.mean(np.transpose(x).dot(delta))
+            a = reLU(z)
+            delta = delta_dot_w_prev * (reLU_grad(a))
+            w_grad = np.transpose(x).dot(delta)
+            #np.mean(np.transpose(x).dot(delta),axis=0)
+            #print('delta', delta.shape)
 
+        #print('shape w_grad', w_grad.shape)
         # [TODO 1.4] Implement L2 regularization on weights here
         w_grad +=  self.reg/m * self.w
         return w_grad, delta.copy()
@@ -144,7 +159,8 @@ class NeuralNet(object):
 
         # [TODO 1.3]
         # Estimating cross entropy loss from y_hat and y 
-        data_loss = -np.mean(np.multiply(y,np.log(y_hat)), axis=1)
+        data_loss = -np.mean(np.sum(np.multiply(y,np.log(y_hat)), axis=1), axis=0)
+        #print('++++ loss shape', data_loss.shape)
         #(-1.0) * np.mean(np.multiply(y, np.log(y_hat)) + np.multiply(1.0-y, np.log(1.0 - y_hat)), axis=1)
 
         # Estimating regularization loss from all layers
@@ -166,12 +182,13 @@ class NeuralNet(object):
         # [TODO 1.5] Compute delta factor from the output
         y_hat = all_x[-1]
         delta = y_hat - y
-        print(delta.shape)
+        #print('shape delta --> ', delta.shape)
         delta /= y.shape[0]
         
         # [TODO 1.5] Compute gradient of the loss function with respect to w of softmax layer, 
         # use delta from the output
-        grad_last = delta
+        grad_last = np.transpose(all_x[-2]).dot(delta)
+        #print('shape grad_last --> ', delta.shape)
 
         grad_list = []
         grad_list.append(grad_last)
@@ -183,10 +200,13 @@ class NeuralNet(object):
 	        # [TODO 1.5] Compute delta_dot_w_prev factor for previous layer (in backpropagation direction)
 	        # delta_prev: delta^(l+1), in the start of this loop, delta_prev is also delta^(L) or delta_last
 	        # delta_dot_w_prev: delta^(l+1) dot product with w^(l+1)T
-
+            # if i == len(self.layers) - 2:
+            #     delta_dot_w_prev = delta 
+            # else:
             delta_dot_w_prev = delta.dot(np.transpose(prev_layer.w))
 	        # Use delta_dot_w_prev to compute delta factor for the next layer (in backpropagation direction)
             grad_w, delta_prev = layer.backward(x, delta_dot_w_prev)
+            #print('---->>>>Layer', i, 'grad_w shape', grad_w.shape, 'delta_prev shape', delta_prev.shape)
             delta = delta_prev
             grad_list.append(grad_w.copy())
 
@@ -203,6 +223,9 @@ class NeuralNet(object):
         for i in range(len(self.layers)):
             layer = self.layers[i]
             grad = grad_list[i]
+            # print(i, 'layer w', layer.w.shape, 
+            #     'learning_rate', learning_rate,
+            #     'grad', grad.shape, '\n\n')
             layer.w = layer.w - learning_rate * grad
     
     
@@ -267,9 +290,9 @@ def unit_test_layer(your_layer):
 
     #evaluate the gradient using back propagation algorithm
     layer_sigmoid.forward(x_test)
-    print(x_test.shape, delta_prev.shape)
+    #print(x_test.shape, delta_prev.shape)
     w_grad, delta = layer_sigmoid.backward(x_test, delta_prev)
-    print(w_grad, delta)
+    #print(w_grad, delta)
 
     #print out the relative error
     error = rel_error(w_grad, numerical_grad)

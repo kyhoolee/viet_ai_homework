@@ -24,7 +24,7 @@ def sigmoid_grad(a):
     :param a: output of the sigmoid function
     """
     #[TODO 1.1]
-    result = sigmoid(a) * (1.0 - sigmoid(a))
+    result = a * (1.0 - a)
     return result
 
 
@@ -72,7 +72,7 @@ def tanh_grad(a):
     :param a: output of tanh
     """
     #[TODO 1.1]
-    result = 1.0 - np.tanh(a)**2
+    result = 1.0 - a**2
     return result
 
 
@@ -82,8 +82,12 @@ def softmax(x):
     Softmax function.
     :param x: input
     """
+    #print('+++++++ softmax', x.shape)
     output = np.exp(x)
-    output = output / np.sum(output)
+    total = np.sum(output, axis=1)
+    #print('+++++++ total', total.shape)
+    for i in range(len(output)):
+        output[i] = output[i] / total[i]
     return output
 
 
@@ -93,6 +97,11 @@ def softmax_minus_max(x):
     Stable softmax function.
     :param x: input
     """
-    output = np.exp(w - np.max(w))
-    output = e / np.sum(e)
-    return None
+    # Broadcast idea 
+    #print('+++++++ softmax_minus_max', x.shape)
+    output = np.exp(x - np.max(x))
+    total = np.sum(output, axis=1)
+    #print('+++++++ total', total.shape)
+    for i in range(len(output)):
+        output[i] = output[i] / total[i]
+    return output
