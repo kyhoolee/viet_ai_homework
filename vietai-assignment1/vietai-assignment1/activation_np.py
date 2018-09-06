@@ -49,8 +49,8 @@ def reLU_grad(a):
     #[TODO 1.1]
     
     grad = a.copy()
-    grad[grad<=0] = 0
-    grad[grad>0] = 1
+    grad[grad<=0] = 0.0
+    grad[grad>0] = 1.0
     return grad
 
 
