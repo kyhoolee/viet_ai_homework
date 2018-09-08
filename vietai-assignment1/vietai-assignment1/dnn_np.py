@@ -312,16 +312,18 @@ def minibatch_train(net, train_x, train_y, cfg):
     train_set_y = create_one_hot(train_set_y, net.num_class)
     all_loss = []
 
-    # Select a mini-batch of train_set_x and train_set_y 
-    random_idx = np.random.randint(train_set_x.shape[0], size=cfg.batch_size)
-    train_set_x = train_set_x[random_idx, :]
-    train_set_y = train_set_y[random_idx, :]
+    
 
     for e in range(cfg.num_epoch):
-        all_x = net.forward(train_set_x)
+        # Select a mini-batch of train_set_x and train_set_y 
+        random_idx = np.random.randint(train_set_x.shape[0], size=cfg.batch_size)
+        batch_train_set_x = train_set_x[random_idx, :]
+        batch_train_set_y = train_set_y[random_idx, :]
+
+        all_x = net.forward(batch_train_set_x)
         y_hat = all_x[-1]
-        loss = net.compute_loss(train_set_y, y_hat)
-        grads = net.backward(train_set_y, all_x)
+        loss = net.compute_loss(batch_train_set_y, y_hat)
+        grads = net.backward(batch_train_set_y, all_x)
         net.update_weight(grads, cfg.learning_rate)
 
         all_loss.append(loss)
