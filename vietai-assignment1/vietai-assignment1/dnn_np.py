@@ -312,6 +312,11 @@ def minibatch_train(net, train_x, train_y, cfg):
     train_set_y = create_one_hot(train_set_y, net.num_class)
     all_loss = []
 
+    # Select a mini-batch of train_set_x and train_set_y 
+    random_idx = np.random.randint(train_set_x.shape[0], size=cfg.batch_size)
+    train_set_x = train_set_x[random_idx, :]
+    train_set_y = train_set_y[random_idx, :]
+
     for e in range(cfg.num_epoch):
         all_x = net.forward(train_set_x)
         y_hat = all_x[-1]
